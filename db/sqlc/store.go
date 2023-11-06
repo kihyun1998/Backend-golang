@@ -52,11 +52,16 @@ type TransferTxResult struct {
 	ToEntry     Entry    `json:"to_entry"`
 }
 
+var txKey = struct{}{}
+
 func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 	var result TransferTxResult
 
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
+
+		txName := ctx.Value(txKey)
+		fmt.Println("[LOG]", txName, " create transfer")
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountsID: arg.FromAccountID,
 			ToAccountsID:   arg.ToAccountID,
@@ -66,6 +71,7 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 			return err
 		}
 
+		fmt.Println("[LOG]", txName, " create entry 1")
 		result.FromEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountsID: arg.FromAccountID,
 			Amount:     -arg.Amount,
@@ -74,6 +80,7 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 			return err
 		}
 
+		fmt.Println("[LOG]", txName, " create entry 2")
 		result.ToEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountsID: arg.ToAccountID,
 			Amount:     arg.Amount,
@@ -84,11 +91,13 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		// fromAccount
 
-		fromAccount, err := q.GetAccount(ctx, arg.FromAccountID)
+		fmt.Println("[LOG]", txName, " get account 1")
+		fromAccount, err := q.GetAccountForUpdate(ctx, arg.FromAccountID)
 		if err != nil {
 			return err
 		}
 
+		fmt.Println("[LOG]", txName, " update account 1")
 		result.FromAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
 			ID:      arg.FromAccountID,
 			Balance: fromAccount.Balance - arg.Amount,
@@ -98,11 +107,12 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 		}
 
 		// toAccount
-		toAccount, err := q.GetAccount(ctx, arg.ToAccountID)
+		fmt.Println("[LOG]", txName, " get account 2")
+		toAccount, err := q.GetAccountForUpdate(ctx, arg.ToAccountID)
 		if err != nil {
 			return err
 		}
-
+		fmt.Println("[LOG]", txName, " update account 2")
 		result.ToAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
 			ID:      arg.ToAccountID,
 			Balance: toAccount.Balance + arg.Amount,
