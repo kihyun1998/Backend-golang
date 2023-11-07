@@ -19,7 +19,7 @@ var testDB *sql.DB
 
 func TestMain(m *testing.M) {
 	var err error
-	// db 연결 테스트
+	// db 연결
 	testDB, err = sql.Open(dbDriver, dbSource)
 	if err != nil {
 		log.Fatal("cannot connect : ", err)
