@@ -306,6 +306,119 @@ func TestUpdateAccountAPI(t *testing.T) {
 	}
 }
 
+func TestDeleteAccountAPI(t *testing.T) {
+	account := randomAccount()
+	testCases := []struct {
+		name             string
+		accountID        int64
+		buildStubsGet    func(store *mockdb.MockStore)
+		buildStubsDelete func(store *mockdb.MockStore)
+		statusCode       int
+	}{
+		{
+			name:      "OK",
+			accountID: account.ID,
+			buildStubsGet: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(account, nil)
+			},
+			buildStubsDelete: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(nil)
+			},
+			statusCode: http.StatusOK,
+		}, {
+			name:      "InternalErrorInGET",
+			accountID: account.ID,
+			buildStubsGet: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(db.Account{}, sql.ErrConnDone)
+			},
+			buildStubsDelete: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(0)
+			},
+			statusCode: http.StatusInternalServerError,
+		}, {
+			name:      "InternalErrorInDelete",
+			accountID: account.ID,
+			buildStubsGet: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(account, nil)
+			},
+			buildStubsDelete: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(sql.ErrConnDone)
+			},
+			statusCode: http.StatusInternalServerError,
+		}, {
+			name:      "BadRequest",
+			accountID: 0,
+			buildStubsGet: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			buildStubsDelete: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(0)
+			},
+			statusCode: http.StatusBadRequest,
+		}, {
+			name:      "NotFound",
+			accountID: account.ID,
+			buildStubsGet: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(1).
+					Return(db.Account{}, sql.ErrNoRows)
+			},
+			buildStubsDelete: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
+					Times(0)
+			},
+			statusCode: http.StatusNotFound,
+		},
+	}
+
+	for i := range testCases {
+		// 테스트 케이스
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			// build stub
+			tc.buildStubsGet(store)
+			tc.buildStubsDelete(store)
+
+			server := NewServer(store)
+			recoder := httptest.NewRecorder()
+
+			url := fmt.Sprintf("/accounts/%d", tc.accountID)
+			request, err := http.NewRequest(http.MethodDelete, url, nil)
+			require.NoError(t, err)
+
+			server.router.ServeHTTP(recoder, request)
+			require.Equal(t, tc.statusCode, recoder.Code)
+		})
+	}
+}
+
 func randomAccount() db.Account {
 	return db.Account{
 		ID:       util.RandomInt(1, 1000),
