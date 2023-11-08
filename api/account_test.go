@@ -206,6 +206,106 @@ func TestCreateAccountAPI(t *testing.T) {
 	}
 }
 
+func TestUpdateAccountAPI(t *testing.T) {
+	account := randomAccount()
+
+	testCases := []struct {
+		name       string
+		accountID  int64
+		body       gin.H
+		buildStubs func(store *mockdb.MockStore)
+		statusCode int
+	}{
+		{
+			name:      "OK",
+			accountID: account.ID,
+			body: gin.H{
+				"balance": account.Balance + 100,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.UpdateAccountParams{
+					ID:      account.ID,
+					Balance: account.Balance + 100,
+				}
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(account, nil)
+			},
+			statusCode: http.StatusOK,
+		},
+		{
+			name:      "InternalError",
+			accountID: account.ID,
+			body: gin.H{
+				"balance": account.Balance + 100,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.UpdateAccountParams{
+					ID:      account.ID,
+					Balance: account.Balance + 100,
+				}
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(db.Account{}, sql.ErrConnDone)
+			},
+			statusCode: http.StatusInternalServerError,
+		}, {
+			name:      "BadRequestByID",
+			accountID: 0,
+			body: gin.H{
+				"balance": account.Balance + 100,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:      "BadRequestByBalance",
+			accountID: account.ID,
+			body: gin.H{
+				"balance": 0,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			statusCode: http.StatusBadRequest,
+		},
+	}
+
+	for i := range testCases {
+		// 테스트 케이스
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			// build stub
+			tc.buildStubs(store)
+
+			server := NewServer(store)
+			recoder := httptest.NewRecorder()
+
+			data, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			url := fmt.Sprintf("/accounts/%d", tc.accountID)
+			request, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
+			require.NoError(t, err)
+
+			server.router.ServeHTTP(recoder, request)
+			require.Equal(t, tc.statusCode, recoder.Code)
+		})
+	}
+}
+
 func randomAccount() db.Account {
 	return db.Account{
 		ID:       util.RandomInt(1, 1000),
