@@ -21,6 +21,8 @@ func NewServer(store *db.Store) *Server {
 	router.GET("/accounts/:id", server.getAccount)
 	// 여러 계정 조회
 	router.GET("/accounts", server.listAccount)
+	// 계정 업데이트
+	router.PUT("/accounts/:id", server.updateAccount)
 
 	server.router = router
 	return server
