@@ -309,22 +309,19 @@ func TestUpdateAccountAPI(t *testing.T) {
 func TestDeleteAccountAPI(t *testing.T) {
 	account := randomAccount()
 	testCases := []struct {
-		name             string
-		accountID        int64
-		buildStubsGet    func(store *mockdb.MockStore)
-		buildStubsDelete func(store *mockdb.MockStore)
-		statusCode       int
+		name       string
+		accountID  int64
+		buildStubs func(store *mockdb.MockStore)
+		statusCode int
 	}{
 		{
 			name:      "OK",
 			accountID: account.ID,
-			buildStubsGet: func(store *mockdb.MockStore) {
+			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
 					Return(account, nil)
-			},
-			buildStubsDelete: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
@@ -334,13 +331,11 @@ func TestDeleteAccountAPI(t *testing.T) {
 		}, {
 			name:      "InternalErrorInGET",
 			accountID: account.ID,
-			buildStubsGet: func(store *mockdb.MockStore) {
+			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
 					Return(db.Account{}, sql.ErrConnDone)
-			},
-			buildStubsDelete: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(0)
@@ -349,13 +344,11 @@ func TestDeleteAccountAPI(t *testing.T) {
 		}, {
 			name:      "InternalErrorInDelete",
 			accountID: account.ID,
-			buildStubsGet: func(store *mockdb.MockStore) {
+			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
 					Return(account, nil)
-			},
-			buildStubsDelete: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
@@ -365,12 +358,10 @@ func TestDeleteAccountAPI(t *testing.T) {
 		}, {
 			name:      "BadRequest",
 			accountID: 0,
-			buildStubsGet: func(store *mockdb.MockStore) {
+			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Any()).
 					Times(0)
-			},
-			buildStubsDelete: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(0)
@@ -379,13 +370,11 @@ func TestDeleteAccountAPI(t *testing.T) {
 		}, {
 			name:      "NotFound",
 			accountID: account.ID,
-			buildStubsGet: func(store *mockdb.MockStore) {
+			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(1).
 					Return(db.Account{}, sql.ErrNoRows)
-			},
-			buildStubsDelete: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).
 					Times(0)
@@ -403,8 +392,7 @@ func TestDeleteAccountAPI(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			// build stub
-			tc.buildStubsGet(store)
-			tc.buildStubsDelete(store)
+			tc.buildStubs(store)
 
 			server := NewServer(store)
 			recoder := httptest.NewRecorder()
