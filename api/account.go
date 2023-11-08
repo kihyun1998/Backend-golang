@@ -148,5 +148,5 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, nil)
+	ctx.JSON(http.StatusOK, db.Account{})
 }
