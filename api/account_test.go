@@ -13,6 +13,7 @@ import (
 	"simplebank/util"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -111,6 +112,96 @@ func TestGetAccountAPI(t *testing.T) {
 
 			server.router.ServeHTTP(recoder, request)
 			tc.checkResponse(t, recoder)
+		})
+	}
+}
+
+func TestCreateAccountAPI(t *testing.T) {
+	account := randomAccount()
+
+	testCases := []struct {
+		name       string
+		body       gin.H
+		buildStubs func(store *mockdb.MockStore)
+		statusCode int
+	}{
+		{
+			name: "OK",
+			body: gin.H{
+				"owner":    account.Owner,
+				"currency": account.Currency,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.CreateAccountParams{
+					Owner:    account.Owner,
+					Balance:  0,
+					Currency: account.Currency,
+				}
+				//build stubs
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(account, nil)
+			},
+			statusCode: http.StatusOK,
+		}, {
+			name: "BadRequest",
+			body: gin.H{
+				"owner":    account.Owner,
+				"currency": "KRW",
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				//build stubs
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			statusCode: http.StatusBadRequest,
+		}, {
+			name: "InternalError",
+			body: gin.H{
+				"owner":    account.Owner,
+				"currency": account.Currency,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.CreateAccountParams{
+					Owner:    account.Owner,
+					Balance:  0,
+					Currency: account.Currency,
+				}
+				//build stubs
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(db.Account{}, sql.ErrConnDone)
+			},
+			statusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for i := range testCases {
+		// 테스트 케이스
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			// build stub
+			tc.buildStubs(store)
+
+			server := NewServer(store)
+			recoder := httptest.NewRecorder()
+
+			data, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			url := "/accounts"
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+			require.NoError(t, err)
+
+			server.router.ServeHTTP(recoder, request)
+			require.Equal(t, tc.statusCode, recoder.Code)
 		})
 	}
 }
