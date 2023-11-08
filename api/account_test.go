@@ -419,6 +419,109 @@ func TestDeleteAccountAPI(t *testing.T) {
 	}
 }
 
+func TestListAccountAPI(t *testing.T) {
+	n := 5
+	accounts := make([]db.Account, n)
+	for i := 0; i < n; i++ {
+		accounts[i] = randomAccount()
+	}
+
+	type Query struct {
+		pageID   int32
+		pageSize int32
+	}
+
+	testCases := []struct {
+		name          string                        // 테스트 케이스 이름
+		query         Query                         // 얻고자하는 계정 ID
+		buildStubs    func(store *mockdb.MockStore) //테스트 사례의 목적에 맞는 스텁 생성
+		checkResponse func(t *testing.T, recoder *httptest.ResponseRecorder)
+	}{
+		{
+			name: "OK",
+			query: Query{
+				pageID:   1,
+				pageSize: int32(n),
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.ListAccountsParams{
+					Limit:  int32(n),
+					Offset: 0,
+				}
+				store.EXPECT().
+					ListAccounts(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(accounts, nil)
+			},
+			checkResponse: func(t *testing.T, recoder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recoder.Code)
+				requireBodyMatchAccounts(t, recoder.Body, accounts)
+			},
+		}, {
+			name: "InternalError",
+			query: Query{
+				pageID:   1,
+				pageSize: int32(n),
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.ListAccountsParams{
+					Limit:  int32(n),
+					Offset: 0,
+				}
+				store.EXPECT().
+					ListAccounts(gomock.Any(), gomock.Eq(arg)).
+					Times(1).
+					Return(accounts, sql.ErrConnDone)
+			},
+			checkResponse: func(t *testing.T, recoder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusInternalServerError, recoder.Code)
+			},
+		}, {
+			name: "BadRequest",
+			query: Query{
+				pageID:   0,
+				pageSize: int32(n),
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					ListAccounts(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(t *testing.T, recoder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recoder.Code)
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			// build stub
+			tc.buildStubs(store)
+
+			server := NewServer(store)
+			recoder := httptest.NewRecorder()
+
+			url := "/accounts"
+			request, err := http.NewRequest(http.MethodGet, url, nil)
+			require.NoError(t, err)
+
+			q := request.URL.Query()
+			q.Add("page_id", fmt.Sprintf("%d", tc.query.pageID))
+			q.Add("page_size", fmt.Sprintf("%d", tc.query.pageSize))
+			request.URL.RawQuery = q.Encode()
+
+			server.router.ServeHTTP(recoder, request)
+			tc.checkResponse(t, recoder)
+		})
+	}
+}
+
 func randomAccount() db.Account {
 	return db.Account{
 		ID:       util.RandomInt(1, 1000),
@@ -438,4 +541,16 @@ func requireBodyMatchAccount(t *testing.T, body *bytes.Buffer, account db.Accoun
 	// account : 만든 계정
 	// gotAccount : GET으로 얻은 계정
 	require.Equal(t, account, gotAccount)
+}
+
+func requireBodyMatchAccounts(t *testing.T, body *bytes.Buffer, accounts []db.Account) {
+	data, err := io.ReadAll(body)
+	require.NoError(t, err)
+
+	var gotAccounts []db.Account
+	err = json.Unmarshal(data, &gotAccounts)
+	require.NoError(t, err)
+	// accounts : 만든 계정들
+	// gotAccounts : GET으로 얻은 계정들
+	require.Equal(t, accounts, gotAccounts)
 }
