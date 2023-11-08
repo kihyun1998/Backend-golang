@@ -7,11 +7,11 @@ import (
 )
 
 type Server struct {
-	store  *db.Store   // db 상호작용 위해
+	store  db.Store    // db 상호작용 위해
 	router *gin.Engine // 라우팅 위해
 }
 
-func NewServer(store *db.Store) *Server {
+func NewServer(store db.Store) *Server {
 	server := &Server{store: store}
 	router := gin.Default()
 
