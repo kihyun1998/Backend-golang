@@ -4,6 +4,8 @@ import (
 	db "simplebank/db/sqlc"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 type Server struct {
@@ -15,6 +17,11 @@ func NewServer(store db.Store) *Server {
 	server := &Server{store: store}
 	router := gin.Default()
 
+	// 유효성 검사 로직 등록 과정
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("currency", validCurrency)
+	}
+
 	// 계정 생성
 	router.POST("/accounts", server.createAccount)
 	// 계정 조회 by ID
@@ -25,6 +32,8 @@ func NewServer(store db.Store) *Server {
 	router.PUT("/accounts/:id", server.updateAccount)
 	// 계정 삭제
 	router.DELETE("/accounts/:id", server.deleteAccount)
+	// 송금
+	router.POST("/transfers", server.createTransfer)
 
 	server.router = router
 	return server
