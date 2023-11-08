@@ -23,6 +23,8 @@ func NewServer(store *db.Store) *Server {
 	router.GET("/accounts", server.listAccount)
 	// 계정 업데이트
 	router.PUT("/accounts/:id", server.updateAccount)
+	// 계정 삭제
+	router.DELETE("/accounts/:id", server.deleteAccount)
 
 	server.router = router
 	return server
