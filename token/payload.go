@@ -11,18 +11,18 @@ import (
 var ErrTokenExpired = errors.New("[ERR] TOKEN HAS EXPIRED")
 var ErrTokenInvalid = errors.New("[ERR] TOKEN IS INVALID")
 
-type Payload struct {
+type JWTPayload struct {
 	jwt.RegisteredClaims
 }
 
 // 페이로드 생성
-func NewPayload(username string, duration time.Duration) (*Payload, error) {
+func NewJWTPayload(username string, duration time.Duration) (*JWTPayload, error) {
 	tokenID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
 
-	payload := &Payload{
+	payload := &JWTPayload{
 		jwt.RegisteredClaims{
 			ID:        tokenID.String(),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

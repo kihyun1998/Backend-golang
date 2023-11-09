@@ -3,13 +3,13 @@ package token
 import "time"
 
 // JWT와 PASETO 생성
-type Maker interface {
+type MakerForJWT interface {
 	CreateToken(username string, duration time.Duration) (string, error)
 
-	VerifyToken(token string) (*Payload, error)
+	VerifyToken(token string) (*JWTPayload, error)
 }
 
-type MakerWantPaseto interface {
+type MakerForPaseto interface {
 	CreateToken(username string, duration time.Duration) (string, error)
 
 	VerifyToken(token string) (*PasetoPayload, error)
