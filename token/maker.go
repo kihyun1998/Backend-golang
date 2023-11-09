@@ -8,3 +8,9 @@ type Maker interface {
 
 	VerifyToken(token string) (*Payload, error)
 }
+
+type MakerWantPaseto interface {
+	CreateToken(username string, duration time.Duration) (string, error)
+
+	VerifyToken(token string) (*PasetoPayload, error)
+}

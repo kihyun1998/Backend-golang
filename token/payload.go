@@ -33,3 +33,32 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 	}
 	return payload, nil
 }
+
+type PasetoPayload struct {
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	IssueAt   time.Time `json:"issued_at"`
+	ExpiredAt time.Time `json:"expired_at"`
+}
+
+func NewPasetoPayload(username string, duration time.Duration) (*PasetoPayload, error) {
+	tokenID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+
+	payload := &PasetoPayload{
+		ID:        tokenID,
+		Username:  username,
+		IssueAt:   time.Now(),
+		ExpiredAt: time.Now().Add(duration),
+	}
+	return payload, nil
+}
+
+func (payload *PasetoPayload) Valid() error {
+	if time.Now().After(payload.ExpiredAt) {
+		return ErrTokenExpired
+	}
+	return nil
+}
