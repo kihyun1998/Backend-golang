@@ -148,7 +148,7 @@ func TestCreateAccountAPI(t *testing.T) {
 			name: "BadRequest",
 			body: gin.H{
 				"owner":    account.Owner,
-				"currency": "KRW",
+				"currency": "invalid",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				//build stubs
