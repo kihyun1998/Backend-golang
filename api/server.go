@@ -34,6 +34,8 @@ func NewServer(store db.Store) *Server {
 	router.DELETE("/accounts/:id", server.deleteAccount)
 	// 송금
 	router.POST("/transfers", server.createTransfer)
+	// 유저 생성
+	router.POST("/users", server.createUser)
 
 	server.router = router
 	return server
