@@ -47,7 +47,6 @@ func TestExpiredJWTToken(t *testing.T) {
 	require.Nil(t, payload)
 }
 
-// 이 서명 잘못된거 테스트도 에러가 잘 나오는건 확인이 됐다.
 func TestInvalidJWTTokenAlgNone(t *testing.T) {
 	payload, err := NewJWTPayload(util.RandomOwner(), time.Minute)
 	require.NoError(t, err)

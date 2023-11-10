@@ -103,7 +103,7 @@ func TestGetAccountAPI(t *testing.T) {
 			// start server and send requests
 			// 테스트를 위해 실제 서버를 열 필요는 없다
 			// httptest 패키지를 사용해서 api 요청의 응답을 기록하면 된다.
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recoder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/accounts/%d", tc.accountID)
@@ -190,7 +190,7 @@ func TestCreateAccountAPI(t *testing.T) {
 			// build stub
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recoder := httptest.NewRecorder()
 
 			data, err := json.Marshal(tc.body)
@@ -290,7 +290,7 @@ func TestUpdateAccountAPI(t *testing.T) {
 			// build stub
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recoder := httptest.NewRecorder()
 
 			data, err := json.Marshal(tc.body)
@@ -394,7 +394,7 @@ func TestDeleteAccountAPI(t *testing.T) {
 			// build stub
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recoder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/accounts/%d", tc.accountID)
@@ -492,7 +492,7 @@ func TestListAccountAPI(t *testing.T) {
 			// build stub
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recoder := httptest.NewRecorder()
 
 			url := "/accounts"

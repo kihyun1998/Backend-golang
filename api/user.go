@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
 	db "simplebank/db/sqlc"
 	"simplebank/util"
@@ -17,12 +18,23 @@ type CreateUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 }
 
-type CreateUserResponse struct {
+type userResponse struct {
 	Username              string    `json:"username"`
 	FullName              string    `json:"full_name"`
 	Email                 string    `json:"email"`
 	PasswordLastChangedAt time.Time `json:"password_last_changed_at"`
 	CreatedAt             time.Time `json:"created_at"`
+}
+
+func newUserResponse(user db.User) userResponse {
+	return userResponse{
+		Username:              user.Username,
+		FullName:              user.FullName,
+		Email:                 user.Email,
+		PasswordLastChangedAt: user.PasswordLastChangedAt,
+		CreatedAt:             user.CreatedAt,
+	}
+
 }
 
 func (server *Server) createUser(ctx *gin.Context) {
@@ -62,13 +74,69 @@ func (server *Server) createUser(ctx *gin.Context) {
 		return
 	}
 
-	res := CreateUserResponse{
-		Username:              user.Username,
-		FullName:              user.FullName,
-		Email:                 user.Email,
-		PasswordLastChangedAt: user.PasswordLastChangedAt,
-		CreatedAt:             user.CreatedAt,
-	}
+	res := newUserResponse(user)
+
 	// 성공 시
 	ctx.JSON(http.StatusOK, res)
+}
+
+type loginUserRequest struct {
+	Username string `json:"username" binding:"required,alphanum"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+type loginUserResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        userResponse `json:"user"`
+}
+
+func (server *Server) loginUser(ctx *gin.Context) {
+	var req loginUserRequest
+
+	// 입력값 유효성 검사
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// 유저가 있나
+	user, err := server.store.GetUser(ctx, req.Username)
+	if err != nil {
+		// 없으면 NotFound
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			return
+		}
+
+		// 그게 아니면 서버에러
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// 유저있으면 비밀번호 체크
+	err = util.CheckPassword(req.Password, user.HashedPassword)
+	if err != nil {
+		// 비밀번호 틀리면 인가 에러
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
+	// 비밀번호 일치하면 토큰 발급
+	accessToken, err := server.tokenMaker.CreateToken(
+		user.Username,
+		server.config.AccessTokenDuration,
+	)
+	if err != nil {
+		// 토큰 발급 실패하면 서버에러
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	res := loginUserResponse{
+		AccessToken: accessToken,
+		User:        newUserResponse(user),
+	}
+
+	ctx.JSON(http.StatusOK, res)
+
 }
