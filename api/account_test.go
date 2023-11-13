@@ -313,6 +313,7 @@ func TestUpdateAccountAPI(t *testing.T) {
 					ID:      account.ID,
 					Balance: account.Balance + 100,
 				}
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(arg.ID)).Times(1).Return(account, nil)
 				store.EXPECT().
 					UpdateAccount(gomock.Any(), gomock.Eq(arg)).
 					Times(1).
@@ -321,8 +322,45 @@ func TestUpdateAccountAPI(t *testing.T) {
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
 			},
-		},
-		{
+		}, {
+			name:      "UnAuthorizedUser",
+			accountID: account.ID,
+			body: gin.H{
+				"balance": account.Balance + 100,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.MakerForPaseto) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, "unauthorized_user", time.Minute)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.UpdateAccountParams{
+					ID:      account.ID,
+					Balance: account.Balance + 100,
+				}
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(arg.ID)).Times(1).Return(account, nil)
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		}, {
+			name:      "NoAuthentication",
+			accountID: account.ID,
+			body: gin.H{
+				"balance": account.Balance + 100,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.MakerForPaseto) {
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().
+					UpdateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		}, {
 			name:      "InternalError",
 			accountID: account.ID,
 			body: gin.H{
@@ -336,6 +374,7 @@ func TestUpdateAccountAPI(t *testing.T) {
 					ID:      account.ID,
 					Balance: account.Balance + 100,
 				}
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(arg.ID)).Times(1).Return(account, nil)
 				store.EXPECT().
 					UpdateAccount(gomock.Any(), gomock.Eq(arg)).
 					Times(1).
@@ -354,24 +393,7 @@ func TestUpdateAccountAPI(t *testing.T) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().
-					UpdateAccount(gomock.Any(), gomock.Any()).
-					Times(0)
-			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-			},
-		},
-		{
-			name:      "BadRequestByBalance",
-			accountID: account.ID,
-			body: gin.H{
-				"balance": 0,
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.MakerForPaseto) {
-				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
-			},
-			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
 				store.EXPECT().
 					UpdateAccount(gomock.Any(), gomock.Any()).
 					Times(0)
