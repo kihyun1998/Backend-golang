@@ -2,15 +2,16 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	db "simplebank/db/sqlc"
+	"simplebank/token"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 )
 
 type CreateAccountRequest struct {
-	Owner    string `json:"owner" binding:"required"`
 	Currency string `json:"currency" binding:"required,currency"`
 }
 
@@ -23,9 +24,12 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		return
 	}
 
+	// 해당 키의 값을 authPayload에 저장
+	// 인터페이스로 반환하기에 형변환함
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.PasetoPayload)
 	// 인자 생성
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    authPayload.Username,
 		Currency: req.Currency,
 		Balance:  0,
 	}
@@ -69,6 +73,14 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err)) // 데이터베이스 서버 에러
 		return
 	}
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.PasetoPayload)
+	if authPayload.Username != account.Owner {
+		err := errors.New("[ERR] IT IS NOT YOUR ACCOUNT")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, account)
 }
 
@@ -84,7 +96,10 @@ func (server *Server) listAccount(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.PasetoPayload)
+
 	arg := db.ListAccountsParams{
+		Owner:  authPayload.Username,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}

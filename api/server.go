@@ -41,18 +41,23 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 func (server *Server) setupRouter() {
 	router := gin.Default()
 
+	// 보안 미들웨어 추가
+	// 이 route로 요청 쏘면 이 미들웨어를 거쳐야 한다.
+	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
+
 	// 계정 생성
-	router.POST("/accounts", server.createAccount)
+	authRoutes.POST("/accounts", server.createAccount)
 	// 계정 조회 by ID
-	router.GET("/accounts/:id", server.getAccount)
+	authRoutes.GET("/accounts/:id", server.getAccount)
 	// 여러 계정 조회
-	router.GET("/accounts", server.listAccount)
+	authRoutes.GET("/accounts", server.listAccount)
 	// 계정 업데이트
-	router.PUT("/accounts/:id", server.updateAccount)
+	authRoutes.PUT("/accounts/:id", server.updateAccount)
 	// 계정 삭제
-	router.DELETE("/accounts/:id", server.deleteAccount)
+	authRoutes.DELETE("/accounts/:id", server.deleteAccount)
 	// 송금
-	router.POST("/transfers", server.createTransfer)
+	authRoutes.POST("/transfers", server.createTransfer)
+
 	// 유저 생성
 	router.POST("/users", server.createUser)
 	// 로그인
