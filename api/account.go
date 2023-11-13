@@ -174,7 +174,7 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		return
 	}
 
-	_, err := server.store.GetAccount(ctx, req.ID)
+	deleteAccount, err := server.store.GetAccount(ctx, req.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(err)) //ID 없을 때 404
@@ -182,6 +182,13 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		}
 
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err)) // 데이터베이스 서버 에러
+		return
+	}
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.PasetoPayload)
+	if authPayload.Username != deleteAccount.Owner {
+		err := errors.New("[ERR] IT IS NOT YOUR ACCOUNT")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 
