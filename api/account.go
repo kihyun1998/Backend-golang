@@ -132,6 +132,25 @@ func (server *Server) updateAccount(ctx *gin.Context) {
 		return
 	}
 
+	// 업데이트 하려는 아이디 정보 조회
+	updateAccount, err := server.store.GetAccount(ctx, reqURI.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(err)) //ID 없을 때 404
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err)) // 데이터베이스 서버 에러
+		return
+	}
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.PasetoPayload)
+	if authPayload.Username != updateAccount.Owner {
+		err := errors.New("[ERR] IT IS NOT YOUR ACCOUNT")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
 	arg := db.UpdateAccountParams{
 		ID:      reqURI.ID,
 		Balance: reqJSON.Balance,
