@@ -4,13 +4,11 @@ option go_package="simplebank/pb";
 
 import "user.proto";
 
-message CreateUserRequest{
+message LoginUserRequest{
     string username=1;
     string password=2;
-    string full_name=3;
-    string email=4;
 }
 
-message CreateUserResponse{
+message LoginUserResponse{
     User user=1;
 }
