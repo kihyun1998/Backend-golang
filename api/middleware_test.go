@@ -22,8 +22,9 @@ func addAuthorization(
 	duration time.Duration,
 ) {
 	// 토큰 발급
-	token, err := tokenMaker.CreateToken(username, duration)
+	token, payload, err := tokenMaker.CreateToken(username, duration)
 	require.NoError(t, err)
+	require.NotEmpty(t, payload)
 
 	// authorizationHeader에는 Bearer 어쩌구가 들어갈 거임
 	authorizationHeader := fmt.Sprintf("%s %s", authorizationType, token)
