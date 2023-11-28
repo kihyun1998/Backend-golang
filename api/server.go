@@ -62,6 +62,8 @@ func (server *Server) setupRouter() {
 	router.POST("/users", server.createUser)
 	// 로그인
 	router.POST("/users/login", server.loginUser)
+	// 토큰 재발급
+	router.POST("/tokens/renew_access", server.renewAccessToken)
 
 	server.router = router
 }
