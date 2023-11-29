@@ -1,6 +1,7 @@
 syntax="proto3";
 
 option go_package="simplebank/pb";
+import "google/protobuf/timestamp.proto";
 
 import "user.proto";
 
@@ -10,5 +11,10 @@ message LoginUserRequest{
 }
 
 message LoginUserResponse{
-    User user=1;
+    string session_id=1;
+	string access_token=2;
+	google.protobuf.Timestamp access_token_expires_at=3;
+	string refresh_token=4;
+	google.protobuf.Timestamp refresh_token_expires_at=5;
+	User user=6;
 }

@@ -3,9 +3,10 @@ syntax="proto3";
 option go_package="simplebank/pb";
 
 import "rpc_create_user.proto";
+import "rpc_login_user.proto";
 
 service Simplebank{
-    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse){
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse){}
+    rpc LoginUser (LoginUserRequest) returns (LoginUserResponse){}
+} 
 
-    }
-}
